@@ -13,7 +13,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     // Allow any host (needed for Cloudflare Containers proxy)
-    allowedHosts: 'all',
+    allowedHosts: true,
   },
 })
 
