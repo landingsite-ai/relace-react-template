@@ -1,7 +1,6 @@
+// For internal links, import and use: import { Link } from 'react-router-dom'
+// Example: <Link to="/about">About</Link> - NOT <a href="/about">
+
 export default function Home() {
-  return (
-    <main className="container py-8">
-      {/* AI will generate content here */}
-    </main>
-  )
+  return <main>{/* AI will generate homepage content here */}</main>;
 }
