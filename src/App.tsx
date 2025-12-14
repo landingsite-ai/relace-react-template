@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
+import PageNotGenerated from "./pages/PageNotGenerated";
 
 // Exposes navigate function for parent iframe communication
 function NavigationHandler() {
@@ -51,6 +52,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
+          {/* Catch-all route for pages that haven't been generated yet */}
+          <Route path="*" element={<PageNotGenerated />} />
         </Route>
       </Routes>
     </>
