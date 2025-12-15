@@ -1,9 +1,9 @@
-import type { Config } from "tailwindcss"
-import tailwindcssAnimate from "tailwindcss-animate"
+import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 const config: Config = {
   darkMode: ["class"],
-  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  content: ["./app/**/*.{ts,tsx}"],
   theme: {
     container: {
       center: true,
@@ -70,7 +70,6 @@ const config: Config = {
     },
   },
   plugins: [tailwindcssAnimate],
-}
+};
 
-export default config
-
+export default config;

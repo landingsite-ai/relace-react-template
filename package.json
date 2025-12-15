@@ -4,18 +4,21 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:container": "concurrently \"vite\" \"tsx scripts/command-server.ts\"",
-    "build": "tsc && vite build",
+    "dev": "react-router dev",
+    "dev:container": "concurrently \"react-router dev\" \"tsx scripts/command-server.ts\"",
+    "build": "react-router build",
     "preview": "vite preview",
-    "lint": "eslint src/",
-    "typecheck": "tsc --noEmit",
+    "start": "react-router-serve ./build/server/index.js",
+    "lint": "eslint app/",
+    "typecheck": "react-router typegen && tsc --noEmit",
     "command-server": "tsx scripts/command-server.ts"
   },
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^6.28.0",
+    "react-router": "^7.1.0",
+    "@react-router/node": "^7.1.0",
+    "@react-router/serve": "^7.1.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-dialog": "^1.1.0",
     "@radix-ui/react-dropdown-menu": "^2.1.0",
@@ -35,7 +38,9 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@react-router/dev": "^7.1.0",
     "@types/node": "^22.0.0",
+    "vite-tsconfig-paths": "^5.1.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",

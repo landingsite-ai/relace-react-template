@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from "react-router";
 
 export default function Header() {
   return (
@@ -12,5 +12,5 @@ export default function Header() {
         </nav>
       </div>
     </header>
-  )
+  );
 }
