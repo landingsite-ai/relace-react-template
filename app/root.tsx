@@ -10,6 +10,7 @@ import type { Route } from "./+types/root";
 import "./styles/globals.css";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import PageNotGenerated from "./components/PageNotGenerated";
 
 /**
  * Root Layout
@@ -63,6 +64,28 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  // In dev mode, show PageNotGenerated for 404s (page not created by AI yet)
+  if (
+    import.meta.env.DEV &&
+    isRouteErrorResponse(error) &&
+    error.status === 404
+  ) {
+    // Get the current pathname from the URL
+    const pathname =
+      typeof window !== "undefined" ? window.location.pathname : undefined;
+
+    return (
+      <div className="flex min-h-screen flex-col">
+        <Header />
+        <main className="flex-1">
+          <PageNotGenerated pathname={pathname} />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Production 404 or other errors
   let message = "Oops!";
   let details = "An unexpected error occurred.";
   let stack: string | undefined;
