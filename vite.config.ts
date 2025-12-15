@@ -28,11 +28,6 @@ export default defineConfig({
       "class-variance-authority",
     ],
   },
-  // SSR optimizations for faster builds
-  ssr: {
-    // Don't externalize these - bundle them for faster SSR
-    noExternal: ["class-variance-authority", "clsx", "tailwind-merge"],
-  },
   build: {
     // Target modern browsers only - reduces polyfills and bundle size
     target: "es2022",
@@ -42,29 +37,8 @@ export default defineConfig({
     minify: "esbuild",
     // Disable gzip size reporting (saves ~1-2s)
     reportCompressedSize: false,
-    // Optimize chunk splitting
-    rollupOptions: {
-      output: {
-        // Manual chunk splitting for better caching and smaller initial load
-        manualChunks: {
-          // React core in its own chunk (rarely changes)
-          react: ["react", "react-dom"],
-          // UI library chunks
-          radix: [
-            "@radix-ui/react-accordion",
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-dropdown-menu",
-            "@radix-ui/react-label",
-            "@radix-ui/react-navigation-menu",
-            "@radix-ui/react-select",
-            "@radix-ui/react-slot",
-            "@radix-ui/react-tabs",
-            "@radix-ui/react-toast",
-          ],
-        },
-      },
-    },
-    // CSS code splitting
+    // Note: Don't use manualChunks - React Router v7 externalizes react/react-dom
+    // for SSR which conflicts with manual chunking
     cssCodeSplit: true,
   },
 });
