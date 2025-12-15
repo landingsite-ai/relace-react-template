@@ -1,9 +1,18 @@
+import type { Route } from "./+types/_index";
+
 /**
  * Homepage
  *
  * This is the main landing page of the website.
  * The AI will populate this with the user's content.
  */
+
+export function meta({}: Route.MetaArgs) {
+  return [
+    { title: "Welcome" },
+    { name: "description", content: "Welcome to our website" },
+  ];
+}
 
 export default function Home() {
   return (
