@@ -1,17 +1,12 @@
 import type { Config } from "@react-router/dev/config";
 
 export default {
-  // Enable SSG pre-rendering for all static routes
-  ssr: true,
+  // Dev: SPA mode (no SSR) to avoid hydration issues from AI-generated code
+  // Build: SSR enabled for static prerendering
+  ssr: process.env.NODE_ENV === "production",
 
-  // Pre-render all routes at build time
-  // This generates static HTML files for each route
+  // Pre-render all routes at build time to static HTML
   async prerender({ getStaticPaths }) {
-    // Get all statically-defined routes from routes.ts
-    const staticPaths = getStaticPaths();
-
-    // Return all paths to pre-render
-    // Add any dynamic paths here if needed in the future
-    return staticPaths;
+    return getStaticPaths();
   },
 } satisfies Config;
