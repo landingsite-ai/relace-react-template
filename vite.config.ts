@@ -16,17 +16,11 @@ export default defineConfig({
     // Allow any host (needed for Cloudflare Containers proxy)
     allowedHosts: true,
   },
-  // Optimize dependency pre-bundling
+  // Optimize dependency pre-bundling for fast dev startup
   optimizeDeps: {
-    // Include commonly used deps for faster dev startup
-    include: [
-      "react",
-      "react-dom",
-      "react-router",
-      "clsx",
-      "tailwind-merge",
-      "class-variance-authority",
-    ],
+    // Don't wait for full import crawl before serving - makes server available faster
+    // while deps are bundled in the background
+    holdUntilCrawlEnd: false,
   },
   build: {
     // Target modern browsers only - reduces polyfills and bundle size
