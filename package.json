@@ -35,7 +35,8 @@
     "embla-carousel-react": "^8.3.0",
     "@aifeatures/react": "^0",
     "@hookform/resolvers": "^3.9.0",
-    "zod": "^3.23.0"
+    "zod": "^3.23.0",
+    "isbot": "^5.0.0"
   },
   "devDependencies": {
     "@react-router/dev": "^7.1.0",
