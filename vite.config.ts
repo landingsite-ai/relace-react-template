@@ -15,6 +15,11 @@ export default defineConfig({
     port: 5173,
     // Allow any host (needed for Cloudflare Containers proxy)
     allowedHosts: true,
+    // Disable error overlay to prevent showing temporary errors while agent is building
+    // Errors are still logged to browser console for debugging
+    hmr: {
+      overlay: false,
+    },
   },
   // Optimize dependency pre-bundling for fast dev startup
   optimizeDeps: {
