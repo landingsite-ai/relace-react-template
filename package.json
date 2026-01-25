@@ -33,7 +33,7 @@
     "tailwind-merge": "^2.5.0",
     "lucide-react": "^0.460.0",
     "embla-carousel-react": "^8.3.0",
-    "@aifeatures/react": "0.1.6",
+    "@aifeatures/react": "0.1.7",
     "zod": "^3.23.0",
     "isbot": "^5.0.0"
   },
