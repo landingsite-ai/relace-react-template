@@ -26,6 +26,33 @@ export default defineConfig({
     // Don't wait for full import crawl before serving - makes server available faster
     // while deps are bundled in the background
     holdUntilCrawlEnd: false,
+    // Pre-include all commonly used deps so Vite never re-optimizes mid-session.
+    // Without this, when AI writes new components with new imports, Vite discovers
+    // the new dep and triggers a full dep re-optimization which deletes the old
+    // .vite/deps/ cache and causes 504s on all dep requests until rebuild completes.
+    include: [
+      "react",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "react-dom",
+      "react-dom/client",
+      "react-router",
+      "@radix-ui/react-accordion",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-label",
+      "@radix-ui/react-navigation-menu",
+      "@radix-ui/react-select",
+      "@radix-ui/react-slot",
+      "@radix-ui/react-tabs",
+      "@radix-ui/react-toast",
+      "class-variance-authority",
+      "clsx",
+      "tailwind-merge",
+      "lucide-react",
+      "embla-carousel-react",
+      "zod",
+    ],
   },
   build: {
     // Target modern browsers only - reduces polyfills and bundle size
