@@ -6,6 +6,11 @@ import { type RouteConfig, index, route } from "@react-router/dev/routes";
  * This file defines all routes for the website.
  * Each route maps a URL path to a component file.
  *
+ * IMPORTANT: When adding a new page, you MUST add its route here!
+ * 1. First create the route file in app/routes/ (e.g., about.tsx)
+ * 2. Then add the route entry below (e.g., route("about", "routes/about.tsx"))
+ * The page will NOT be accessible until both steps are done.
+ *
  * File naming conventions - examples:
  * - _index.tsx -> "/" (homepage)
  * - about.tsx -> "/about"
@@ -18,7 +23,7 @@ const routes: RouteConfig = [
   // Homepage
   index("routes/_index.tsx"),
 
-  // Add more routes here if pages are added - examples:
+  // Add new page routes here - examples:
   // route("about", "routes/about.tsx"),
   // route("contact", "routes/contact.tsx"),
 ];
