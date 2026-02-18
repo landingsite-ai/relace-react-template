@@ -9,4 +9,10 @@ export default {
   async prerender({ getStaticPaths }) {
     return getStaticPaths();
   },
+
+  // Use "initial" route discovery for static prerendering.
+  // Default "lazy" mode fetches /__manifest at runtime for client-side navigation,
+  // which doesn't exist on static hosting. "initial" falls back to full page
+  // navigations for routes not in the initial HTML, loading the prerendered page.
+  routeDiscovery: { mode: "initial" },
 } satisfies Config;
