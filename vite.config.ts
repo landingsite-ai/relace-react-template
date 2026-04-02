@@ -1,6 +1,5 @@
 import { reactRouter } from "@react-router/dev/vite";
 import { defineConfig, type PluginOption } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 
 /**
@@ -53,9 +52,11 @@ export default defineConfig({
     // Tailwind v4 Vite plugin (uses Oxide engine + Lightning CSS)
     tailwindcss(),
     reactRouter(),
-    tsconfigPaths(),
     reloadOnRouteChanges(),
   ],
+  resolve: {
+    tsconfigPaths: true,
+  },
   server: {
     host: "0.0.0.0",
     port: 5173,
@@ -105,8 +106,6 @@ export default defineConfig({
     target: "es2022",
     // Disable sourcemaps in production for faster builds
     sourcemap: false,
-    // Use esbuild for minification (faster than terser)
-    minify: "esbuild",
     // Disable gzip size reporting (saves ~1-2s)
     reportCompressedSize: false,
     // Note: Don't use manualChunks - React Router v7 externalizes react/react-dom
