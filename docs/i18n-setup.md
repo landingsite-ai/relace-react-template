@@ -109,7 +109,7 @@ import { i18nConfig } from "~/i18n/config";
 /**
  * Language layout route.
  * Wraps all pages under the optional :lang? prefix.
- * Syncs the URL language to i18next during render.
+ * Syncs the URL language to i18next and the <html lang> attribute during render.
  */
 export default function LangLayout() {
   const { pathname } = useLocation();
@@ -124,11 +124,16 @@ export default function LangLayout() {
     i18n.changeLanguage(lang);
   }
 
+  // Keep <html lang> in sync — works in both dev (SPA) and production (SSG)
+  if (typeof document !== "undefined") {
+    document.documentElement.lang = lang;
+  }
+
   return <Outlet />;
 }
 ```
 
-IMPORTANT: `changeLanguage` is called during render, NOT in `useEffect`. This prevents hydration mismatch between SSG output and client.
+IMPORTANT: `changeLanguage` is called during render, NOT in `useEffect`. This prevents hydration mismatch between SSG output and client. The `document.documentElement.lang` update ensures the correct lang attribute is visible in dev mode (where SSR is disabled and the root loader doesn't run server-side).
 
 ## Step 6: Create `app/components/HreflangTags.tsx`
 
