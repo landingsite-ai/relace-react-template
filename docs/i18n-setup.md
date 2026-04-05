@@ -247,7 +247,38 @@ export function LanguageSwitcher() {
 
 Place the LanguageSwitcher in the Header component.
 
-## Step 8: Edit `app/root.tsx`
+## Step 8: Create `app/hooks/useLocalizedPath.ts`
+
+Internal links must include the language prefix when on a non-default language page. This hook reads `:lang` from route params and prefixes paths automatically:
+
+```ts
+import { useParams } from "react-router";
+
+export function useLocalizedPath(path: string): string {
+  const { lang } = useParams();
+  if (!lang) return path;
+  return `/${lang}${path === "/" ? "" : path}`;
+}
+```
+
+Use it on EVERY internal `<Link>` in Header, Footer, CTAs, and page content:
+
+```tsx
+import { Link } from "react-router";
+import { useLocalizedPath } from "~/hooks/useLocalizedPath";
+
+// Before:
+<Link to="/about">About</Link>
+
+// After:
+<Link to={useLocalizedPath("/about")}>About</Link>
+```
+
+When the user is on `/es/about`, `params.lang` is `"es"`, so `useLocalizedPath("/contact")` returns `"/es/contact"`. On the default language (no prefix), `params.lang` is undefined and paths are returned unchanged.
+
+IMPORTANT: Do this for ALL internal links across the entire site — Header nav, Footer links, CTA buttons, inline links in page content. If a link points to an internal page and doesn't use `useLocalizedPath`, clicking it will drop the user back to the default language.
+
+## Step 9: Edit `app/root.tsx`
 
 Add these modifications:
 
@@ -273,7 +304,7 @@ Add these modifications:
 
 5. Note: LanguageSync is now handled by the `lang-layout.tsx` layout route (Step 5), NOT in root.tsx.
 
-## Step 9: Edit `app/routes.ts`
+## Step 10: Edit `app/routes.ts`
 
 Wrap all page routes under a `:lang?` layout route. The `:lang?` segment is optional — it matches both `/about` (no language prefix) and `/es/about` (with prefix):
 
@@ -300,7 +331,7 @@ export default routes;
 
 This single structure handles all languages. Adding a new page just means adding one `route()` entry inside the children array.
 
-## Step 10: Edit `react-router.config.ts`
+## Step 11: Edit `react-router.config.ts`
 
 The `:lang?` routes are parameterized, so `getStaticPaths()` alone won't enumerate language variants. Update the prerender config to expand paths for each language:
 
@@ -360,7 +391,7 @@ async prerender() {
 
 When adding a new page, add its path to both `routes.ts` (as a child route) AND the `basePaths` array here.
 
-## Step 11: Convert existing pages to use translations
+## Step 12: Convert existing pages to use translations
 
 For EVERY existing route component, you need to:
 
