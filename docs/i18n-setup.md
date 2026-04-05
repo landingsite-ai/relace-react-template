@@ -69,9 +69,26 @@ for (const [path, module] of Object.entries(localeModules)) {
   }
 }
 
+// Detect initial language from URL on client (before React renders).
+// This ensures the very first render has the correct language everywhere,
+// including Header/Footer which render outside the :lang? layout route.
+// On the server (SSR), window doesn't exist — the lang-layout loader handles it.
+function getInitialLang(): string {
+  if (typeof window !== "undefined") {
+    const firstSegment = window.location.pathname.split("/")[1];
+    if (
+      i18nConfig.languages.includes(firstSegment) &&
+      firstSegment !== i18nConfig.defaultLanguage
+    ) {
+      return firstSegment;
+    }
+  }
+  return i18nConfig.defaultLanguage;
+}
+
 i18n.use(initReactI18next).init({
   resources,
-  lng: i18nConfig.defaultLanguage,
+  lng: getInitialLang(),
   fallbackLng: i18nConfig.defaultLanguage,
   interpolation: { escapeValue: false },
   react: { useSuspense: false },
@@ -80,7 +97,7 @@ i18n.use(initReactI18next).init({
 export default i18n;
 ```
 
-IMPORTANT: Use `import.meta.glob` with `eager: true` so translations load synchronously. Never install `i18next-browser-languagedetector` — language is determined by URL path only.
+IMPORTANT: Use `import.meta.glob` with `eager: true` so translations load synchronously. Never install `i18next-browser-languagedetector` — language is determined by URL path only. The `getInitialLang()` function reads the language from the URL at init time so the first render is correct everywhere — without this, components like Header/Footer that render outside the `:lang?` layout would flash the default language first.
 
 ## Step 3: Create `app/i18n/utils.ts`
 
@@ -127,38 +144,44 @@ Create one file per language (e.g., `en.json`, `es.json`). Add keys as you build
 This is a layout route that wraps all pages and handles the optional `:lang?` URL prefix. It renders LanguageSync and then the child route via `<Outlet />`:
 
 ```tsx
-import { Outlet, useLocation } from "react-router";
-import { useTranslation } from "react-i18next";
+import { Outlet } from "react-router";
+import i18n from "~/i18n";
 import { i18nConfig } from "~/i18n/config";
+import type { Route } from "./+types/lang-layout";
 
 /**
  * Language layout route.
  * Wraps all pages under the optional :lang? prefix.
- * Syncs the URL language to i18next and the <html lang> attribute during render.
+ *
+ * The loader runs BEFORE React renders (both in SSR and client-side navigation),
+ * so i18next has the correct language set by the time any component mounts.
+ * This prevents Header/Footer from flashing the default language.
  */
-export default function LangLayout() {
-  const { pathname } = useLocation();
-  const { i18n } = useTranslation();
-
-  const firstSegment = pathname.split("/")[1];
-  const lang = i18nConfig.languages.includes(firstSegment) && firstSegment !== i18nConfig.defaultLanguage
-    ? firstSegment
+export async function loader({ params }: Route.LoaderArgs) {
+  const lang = params.lang && i18nConfig.languages.includes(params.lang)
+    ? params.lang
     : i18nConfig.defaultLanguage;
 
   if (i18n.language !== lang) {
-    i18n.changeLanguage(lang);
+    await i18n.changeLanguage(lang);
   }
 
+  return { lang };
+}
+
+export default function LangLayout() {
   // Keep <html lang> in sync — works in both dev (SPA) and production (SSG)
   if (typeof document !== "undefined") {
-    document.documentElement.lang = lang;
+    document.documentElement.lang = i18n.language;
   }
 
   return <Outlet />;
 }
 ```
 
-IMPORTANT: `changeLanguage` is called during render, NOT in `useEffect`. This prevents hydration mismatch between SSG output and client. The `document.documentElement.lang` update ensures the correct lang attribute is visible in dev mode (where SSR is disabled and the root loader doesn't run server-side).
+IMPORTANT: The language change happens in the `loader`, NOT during render. React Router awaits loaders before rendering, so by the time Header, Footer, and page components mount, `i18n.language` is already correct. This prevents the flash-of-wrong-language issue where Header would briefly show the default language.
+
+The `getInitialLang()` in Step 2 handles the initial page load (before any loader runs). The loader here handles client-side navigation between languages (e.g., user clicks from `/` to `/es`).
 
 ## Step 6: Create `app/components/HreflangTags.tsx`
 
