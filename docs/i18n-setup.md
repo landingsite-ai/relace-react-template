@@ -11,6 +11,31 @@ This guide covers how to add multi-language support to a React website using rea
 - All translations are baked into static HTML at build time (SSG) — no client-side language detection
 - Each language/page combo gets its own pre-rendered HTML file
 
+## IMPORTANT: Route Structure
+
+All page routes MUST be wrapped inside a single `:lang?` layout route. Do NOT create separate route entries per language.
+
+CORRECT — one route entry per page inside `:lang?` layout:
+```ts
+route(":lang?", "routes/lang-layout.tsx", [
+  index("routes/_index.tsx"),
+  route("about", "routes/about.tsx"),
+])
+```
+
+WRONG — do NOT duplicate routes per language:
+```ts
+// DO NOT DO THIS — same file for two routes breaks in dev mode
+index("routes/_index.tsx"),
+route("es", "routes/_index.tsx"),
+route("about", "routes/about.tsx"),
+route("es/about", "routes/about.tsx"),
+```
+
+The `:lang?` segment is optional — it matches both `/about` (no prefix, default language) and `/es/about` (with prefix) using a single route entry. The `lang-layout.tsx` layout handles language detection.
+
+NOTE: The layout file MUST be named `lang-layout.tsx`, NOT `_lang.tsx`. Files starting with `_` are treated as pathless layouts by the React Router Vite plugin and will fail to load.
+
 ## Step 1: Create `app/i18n/config.ts`
 
 Single source of truth for language configuration:
@@ -97,7 +122,7 @@ Create `app/i18n/locales/{lang}.json` for each language. Use flat dot-notation k
 
 Create one file per language (e.g., `en.json`, `es.json`). Add keys as you build pages.
 
-## Step 5: Create `app/routes/_lang.tsx` (language layout route)
+## Step 5: Create `app/routes/lang-layout.tsx` (language layout route)
 
 This is a layout route that wraps all pages and handles the optional `:lang?` URL prefix. It renders LanguageSync and then the child route via `<Outlet />`:
 
@@ -223,7 +248,7 @@ Add these modifications:
 
 4. Set `<html lang>` dynamically from the loader data in the Layout component. During SSG prerender, React Router runs the loader with the correct URL (e.g., `/es/about`), so the pre-rendered HTML gets `lang="es"` baked in.
 
-5. Note: LanguageSync is now handled by the `_lang.tsx` layout route (Step 5), NOT in root.tsx.
+5. Note: LanguageSync is now handled by the `lang-layout.tsx` layout route (Step 5), NOT in root.tsx.
 
 ## Step 9: Edit `app/routes.ts`
 
@@ -234,7 +259,7 @@ import { type RouteConfig, index, route } from "@react-router/dev/routes";
 
 const routes: RouteConfig = [
   // All pages wrapped in the :lang? layout for i18n
-  route(":lang?", "routes/_lang.tsx", [
+  route(":lang?", "routes/lang-layout.tsx", [
     index("routes/_index.tsx"),
     route("about", "routes/about.tsx"),
     route("services", "routes/services.tsx"),
