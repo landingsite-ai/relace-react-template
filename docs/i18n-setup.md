@@ -4,35 +4,48 @@ This guide covers how to add multi-language support to a React website using rea
 
 ## How It Works
 
-- Default language has NO prefix: `/`, `/about`, `/contact`
-- Other languages get a `/:lang` prefix: `/es`, `/es/about`, `/es/contact`
+- Default language has NO prefix and uses original slugs: `/`, `/about`, `/contact`
+- Other languages get a `/:lang` prefix with translated slugs: `/es`, `/es/sobre-nosotros`, `/es/contacto`
 - The default language is NOT always English — it's whatever the site's primary language is
-- Routes use React Router's optional `:lang?` segment — one route entry per page handles all languages
-- All translations are baked into static HTML at build time (SSG) — no client-side language detection
+- `/es/about` returns 404 — only translated slugs work under non-default language prefixes
+- All translations (including URL slugs) are baked into static HTML at build time (SSG)
 - Each language/page combo gets its own pre-rendered HTML file
 
 ## IMPORTANT: Route Structure
 
-All page routes MUST be wrapped inside a single `:lang?` layout route. Do NOT create separate route entries per language.
+React Router v7 assigns route IDs by file path. If the same file is used in two route entries, it causes a "No result found for routeId" error. To avoid this, non-default languages use thin re-export files in a subdirectory (e.g., `routes/es/about.tsx` re-exports from `routes/about.tsx`).
 
-CORRECT — one route entry per page inside `:lang?` layout:
+CORRECT — each route entry has its own unique file:
 ```ts
+// Default language: top-level, original files
+index("routes/_index.tsx"),
+route("about", "routes/about.tsx"),
+
+// Spanish: re-export files in routes/es/
+route("es", "routes/es/lang-layout.tsx", [
+  index("routes/es/_index.tsx"),
+  route("sobre-nosotros", "routes/es/about.tsx"),  // re-exports from ../about
+]),
+```
+
+WRONG — do NOT reuse the same file in multiple route entries:
+```ts
+// DO NOT DO THIS — causes route ID conflicts
+index("routes/_index.tsx"),
+route("about", "routes/about.tsx"),
+route("es", "routes/lang-layout.tsx", [
+  index("routes/_index.tsx"),                    // ❌ same file used twice
+  route("sobre-nosotros", "routes/about.tsx"),   // ❌ same file used twice
+]),
+```
+
+ALSO WRONG — do NOT use `:lang?` optional segments:
+```ts
+// DO NOT DO THIS — /es/about should not work, only /es/sobre-nosotros
 route(":lang?", "routes/lang-layout.tsx", [
-  index("routes/_index.tsx"),
   route("about", "routes/about.tsx"),
 ])
 ```
-
-WRONG — do NOT duplicate routes per language:
-```ts
-// DO NOT DO THIS — same file for two routes breaks in dev mode
-index("routes/_index.tsx"),
-route("es", "routes/_index.tsx"),
-route("about", "routes/about.tsx"),
-route("es/about", "routes/about.tsx"),
-```
-
-The `:lang?` segment is optional — it matches both `/about` (no prefix, default language) and `/es/about` (with prefix) using a single route entry. The `lang-layout.tsx` layout handles language detection.
 
 NOTE: The layout file MUST be named `lang-layout.tsx`, NOT `_lang.tsx`. Files starting with `_` are treated as pathless layouts by the React Router Vite plugin and will fail to load.
 
@@ -71,7 +84,7 @@ for (const [path, module] of Object.entries(localeModules)) {
 
 // Detect initial language from URL on client (before React renders).
 // This ensures the very first render has the correct language everywhere,
-// including Header/Footer which render outside the :lang? layout route.
+// including Header/Footer which render outside the lang layout route.
 // On the server (SSR), window doesn't exist — the lang-layout loader handles it.
 function getInitialLang(): string {
   if (typeof window !== "undefined") {
@@ -97,11 +110,11 @@ i18n.use(initReactI18next).init({
 export default i18n;
 ```
 
-IMPORTANT: Use `import.meta.glob` with `eager: true` so translations load synchronously. Never install `i18next-browser-languagedetector` — language is determined by URL path only. The `getInitialLang()` function reads the language from the URL at init time so the first render is correct everywhere — without this, components like Header/Footer that render outside the `:lang?` layout would flash the default language first.
+IMPORTANT: Use `import.meta.glob` with `eager: true` so translations load synchronously. Never install `i18next-browser-languagedetector` — language is determined by URL path only. The `getInitialLang()` function reads the language from the URL at init time so the first render is correct everywhere — without this, components like Header/Footer would flash the default language first.
 
 ## Step 3: Create `app/i18n/utils.ts`
 
-Utility functions for use in `meta()` and other non-React contexts where hooks aren't available:
+Utility functions for use in `meta()`, `routes.ts`, and other non-React contexts:
 
 ```ts
 import { i18nConfig } from "./config";
@@ -120,28 +133,59 @@ export function getTranslation(lang: string, key: string): string {
   const translations = mod?.default || mod;
   return (translations as any)?.[key] || key;
 }
+
+/**
+ * Reverse slug lookup: given a translated slug and language, find the page key.
+ * E.g., reverseSlug("sobre-nosotros", "es") → "about"
+ */
+export function reverseSlug(slug: string, lang: string): string | undefined {
+  const mod = localeModules[`./locales/${lang}.json`];
+  const translations = (mod?.default || mod) as Record<string, string> | undefined;
+  if (!translations) return undefined;
+  for (const [key, value] of Object.entries(translations)) {
+    if (key.startsWith("slug.") && value === slug) {
+      return key.replace("slug.", "");
+    }
+  }
+  return undefined;
+}
 ```
 
 ## Step 4: Create translation files
 
-Create `app/i18n/locales/{lang}.json` for each language. Use flat dot-notation keys:
+Create `app/i18n/locales/{lang}.json` for each language. Include `slug.*` keys for every page — these define the URL paths per language. Default language slugs are identity mappings (the value matches the route path):
 
 ```json
+// en.json
 {
+  "slug.about": "about",
+  "slug.services": "services",
+  "slug.pricing": "pricing",
   "nav.home": "Home",
   "nav.about": "About",
   "hero.title": "Welcome to Our Site",
-  "hero.subtitle": "Building the future",
   "about.title": "About Us",
   "about.description": "We are a team..."
 }
 ```
 
-Create one file per language (e.g., `en.json`, `es.json`). Add keys as you build pages.
+```json
+// es.json
+{
+  "slug.about": "sobre-nosotros",
+  "slug.services": "servicios",
+  "slug.pricing": "precios",
+  "nav.home": "Inicio",
+  "nav.about": "Sobre Nosotros",
+  "hero.title": "Bienvenido a Nuestro Sitio",
+  "about.title": "Sobre Nosotros",
+  "about.description": "Somos un equipo..."
+}
+```
 
-## Step 5: Create `app/routes/lang-layout.tsx` (language layout route)
+## Step 5: Create `app/routes/lang-layout.tsx`
 
-This is a layout route that wraps all pages and handles the optional `:lang?` URL prefix. It renders LanguageSync and then the child route via `<Outlet />`:
+This layout handles language switching. It's used as the parent route for non-default language groups:
 
 ```tsx
 import { Outlet } from "react-router";
@@ -149,14 +193,6 @@ import i18n from "~/i18n";
 import { i18nConfig } from "~/i18n/config";
 import type { Route } from "./+types/lang-layout";
 
-/**
- * Language layout route.
- * Wraps all pages under the optional :lang? prefix.
- *
- * The loader runs BEFORE React renders (both in SSR and client-side navigation),
- * so i18next has the correct language set by the time any component mounts.
- * This prevents Header/Footer from flashing the default language.
- */
 export async function loader({ params }: Route.LoaderArgs) {
   const lang = params.lang && i18nConfig.languages.includes(params.lang)
     ? params.lang
@@ -170,7 +206,6 @@ export async function loader({ params }: Route.LoaderArgs) {
 }
 
 export default function LangLayout() {
-  // Keep <html lang> in sync — works in both dev (SPA) and production (SSG)
   if (typeof document !== "undefined") {
     document.documentElement.lang = i18n.language;
   }
@@ -179,33 +214,82 @@ export default function LangLayout() {
 }
 ```
 
-IMPORTANT: The language change happens in the `loader`, NOT during render. React Router awaits loaders before rendering, so by the time Header, Footer, and page components mount, `i18n.language` is already correct. This prevents the flash-of-wrong-language issue where Header would briefly show the default language.
+IMPORTANT: The language change happens in the `loader`, NOT during render. React Router awaits loaders before rendering, so Header, Footer, and all page components see the correct language immediately.
 
-The `getInitialLang()` in Step 2 handles the initial page load (before any loader runs). The loader here handles client-side navigation between languages (e.g., user clicks from `/` to `/es`).
+## Step 6: Create re-export files for each non-default language
 
-## Step 6: Create `app/components/HreflangTags.tsx`
+For EVERY non-default language, create a directory `app/routes/{lang}/` with thin re-export files for every page. These files give each route a unique file path (avoiding React Router's route ID conflict) while sharing the same implementation.
 
-Renders `<link rel="alternate" hreflang="...">` tags for SEO:
+Example for Spanish (`app/routes/es/`):
+
+`app/routes/es/lang-layout.tsx`:
+```tsx
+export { default, loader } from "../lang-layout";
+```
+
+`app/routes/es/_index.tsx`:
+```tsx
+export { default, meta } from "../_index";
+```
+
+`app/routes/es/about.tsx`:
+```tsx
+export { default, meta } from "../about";
+```
+
+`app/routes/es/services.tsx`:
+```tsx
+export { default, meta } from "../services";
+```
+
+Create one re-export file per page. Only re-export the exports that actually exist in the source file (e.g., if a page has `meta` and `default` but no `loader`, only re-export `meta` and `default`).
+
+Do this for EVERY page on the site, plus `lang-layout.tsx` and `_index.tsx`.
+
+## Step 7: Create `app/components/HreflangTags.tsx`
+
+Renders `<link rel="alternate" hreflang="...">` tags with translated slugs for SEO:
 
 ```tsx
 import { useLocation } from "react-router";
 import { i18nConfig } from "~/i18n/config";
+import { getTranslation, reverseSlug, getLangFromPath } from "~/i18n/utils";
 
 export function HreflangTags({ baseUrl }: { baseUrl?: string }) {
   const { pathname } = useLocation();
-  const firstSegment = pathname.split("/")[1];
-  const isNonDefault = i18nConfig.languages.includes(firstSegment) && firstSegment !== i18nConfig.defaultLanguage;
-  const basePath = isNonDefault ? pathname.replace(`/${firstSegment}`, "") || "/" : pathname;
+  const currentLang = getLangFromPath(pathname);
+
+  const segments = pathname.split("/").filter(Boolean);
+  const currentSlug = currentLang === i18nConfig.defaultLanguage
+    ? segments[0]
+    : segments[1];
+
+  const pageKey = currentSlug ? reverseSlug(currentSlug, currentLang) : undefined;
+
+  if (!pageKey) {
+    return (
+      <>
+        {i18nConfig.languages.map((lang) => {
+          const href = lang === i18nConfig.defaultLanguage
+            ? `${baseUrl || ""}/`
+            : `${baseUrl || ""}/${lang}`;
+          return <link key={lang} rel="alternate" hrefLang={lang} href={href} />;
+        })}
+        <link rel="alternate" hrefLang="x-default" href={`${baseUrl || ""}/`} />
+      </>
+    );
+  }
 
   return (
     <>
       {i18nConfig.languages.map((lang) => {
+        const slug = getTranslation(lang, `slug.${pageKey}`);
         const href = lang === i18nConfig.defaultLanguage
-          ? `${baseUrl || ""}${basePath}`
-          : `${baseUrl || ""}/${lang}${basePath === "/" ? "" : basePath}`;
+          ? `${baseUrl || ""}/${slug}`
+          : `${baseUrl || ""}/${lang}/${slug}`;
         return <link key={lang} rel="alternate" hrefLang={lang} href={href} />;
       })}
-      <link rel="alternate" hrefLang="x-default" href={`${baseUrl || ""}${basePath}`} />
+      <link rel="alternate" hrefLang="x-default" href={`${baseUrl || ""}/${getTranslation(i18nConfig.defaultLanguage, `slug.${pageKey}`)}`} />
     </>
   );
 }
@@ -213,27 +297,36 @@ export function HreflangTags({ baseUrl }: { baseUrl?: string }) {
 
 Add `<HreflangTags />` inside each route component so crawlers discover language variants.
 
-## Step 7: Create `app/components/LanguageSwitcher.tsx`
+## Step 8: Create `app/components/LanguageSwitcher.tsx`
 
-UI component for switching languages:
+Navigates between languages using translated slugs:
 
 ```tsx
 import { Link, useLocation } from "react-router";
 import { i18nConfig } from "~/i18n/config";
+import { getTranslation, reverseSlug, getLangFromPath } from "~/i18n/utils";
 
 export function LanguageSwitcher() {
   const { pathname } = useLocation();
-  const firstSegment = pathname.split("/")[1];
-  const isNonDefault = i18nConfig.languages.includes(firstSegment) && firstSegment !== i18nConfig.defaultLanguage;
-  const currentLang = isNonDefault ? firstSegment : i18nConfig.defaultLanguage;
-  const basePath = isNonDefault ? pathname.replace(`/${firstSegment}`, "") || "/" : pathname;
+  const currentLang = getLangFromPath(pathname);
+
+  const segments = pathname.split("/").filter(Boolean);
+  const currentSlug = currentLang === i18nConfig.defaultLanguage
+    ? segments[0]
+    : segments[1];
+
+  const pageKey = currentSlug ? reverseSlug(currentSlug, currentLang) : undefined;
 
   return (
     <div className="flex gap-2">
       {i18nConfig.languages.map((lang) => {
-        const to = lang === i18nConfig.defaultLanguage
-          ? basePath
-          : `/${lang}${basePath === "/" ? "" : basePath}`;
+        let to: string;
+        if (!pageKey) {
+          to = lang === i18nConfig.defaultLanguage ? "/" : `/${lang}`;
+        } else {
+          const slug = getTranslation(lang, `slug.${pageKey}`);
+          to = lang === i18nConfig.defaultLanguage ? `/${slug}` : `/${lang}/${slug}`;
+        }
         return (
           <Link key={lang} to={to} className={currentLang === lang ? "font-bold" : ""}>
             {i18nConfig.languageNames[lang]}
@@ -247,17 +340,22 @@ export function LanguageSwitcher() {
 
 Place the LanguageSwitcher in the Header component.
 
-## Step 8: Create `app/hooks/useLocalizedPath.ts`
+## Step 9: Create `app/hooks/useLocalizedPath.ts`
 
-Internal links must include the language prefix when on a non-default language page. This hook reads `:lang` from route params and prefixes paths automatically:
+Internal links must use translated slugs when on a non-default language page:
 
 ```ts
 import { useParams } from "react-router";
+import { useTranslation } from "react-i18next";
 
 export function useLocalizedPath(path: string): string {
   const { lang } = useParams();
+  const { t } = useTranslation();
   if (!lang) return path;
-  return `/${lang}${path === "/" ? "" : path}`;
+
+  const segments = path.split("/").filter(Boolean);
+  const translated = segments.map((seg) => t(`slug.${seg}`, seg));
+  return `/${lang}/${translated.join("/")}`;
 }
 ```
 
@@ -274,11 +372,11 @@ import { useLocalizedPath } from "~/hooks/useLocalizedPath";
 <Link to={useLocalizedPath("/about")}>About</Link>
 ```
 
-When the user is on `/es/about`, `params.lang` is `"es"`, so `useLocalizedPath("/contact")` returns `"/es/contact"`. On the default language (no prefix), `params.lang` is undefined and paths are returned unchanged.
+IMPORTANT: The path passed to `useLocalizedPath` should always use the default-language slug (e.g., `"/about"`, not `"/sobre-nosotros"`). The hook translates it to the current language's slug.
 
-IMPORTANT: Do this for ALL internal links across the entire site — Header nav, Footer links, CTA buttons, inline links in page content. If a link points to an internal page and doesn't use `useLocalizedPath`, clicking it will drop the user back to the default language.
+IMPORTANT: The logo/site-name link in the Header is often hardcoded to `"/"`. It MUST also use `useLocalizedPath("/")` so it points to `/es` on Spanish pages instead of `/`. Same for any other hardcoded `"/"` links.
 
-## Step 9: Edit `app/root.tsx`
+## Step 10: Edit `app/root.tsx`
 
 Add these modifications:
 
@@ -300,25 +398,53 @@ Add these modifications:
    }
    ```
 
-4. Set `<html lang>` dynamically from the loader data in the Layout component. During SSG prerender, React Router runs the loader with the correct URL (e.g., `/es/about`), so the pre-rendered HTML gets `lang="es"` baked in.
+4. Set `<html lang>` dynamically from the loader data in the Layout component. During SSG prerender, React Router runs the loader with the correct URL, so the pre-rendered HTML gets the right `lang` attribute.
 
-5. Note: LanguageSync is now handled by the `lang-layout.tsx` layout route (Step 5), NOT in root.tsx.
+## Step 11: Edit `app/routes.ts`
 
-## Step 10: Edit `app/routes.ts`
-
-Wrap all page routes under a `:lang?` layout route. The `:lang?` segment is optional — it matches both `/about` (no language prefix) and `/es/about` (with prefix):
+Generate routes dynamically from locale slug translation keys. Default language pages are top-level. Non-default languages use re-export files under `routes/{lang}/`:
 
 ```ts
 import { type RouteConfig, index, route } from "@react-router/dev/routes";
+import { i18nConfig } from "./i18n/config";
+import { getTranslation } from "./i18n/utils";
+
+// Page registry: [slug key, route file]
+// The slug key matches the "slug.{key}" entry in locale files.
+// Add new pages here — slugs are looked up from locale files automatically.
+const pages: [string, string][] = [
+  ["about", "routes/about.tsx"],
+  ["services", "routes/services.tsx"],
+  ["pricing", "routes/pricing.tsx"],
+  // ... add ALL pages on the site
+];
+
+// Default language: top-level, original slugs, no prefix
+const defaultRoutes = pages.map(([key, file]) =>
+  route(getTranslation(i18nConfig.defaultLanguage, `slug.${key}`), file)
+);
+
+// Non-default languages: translated slugs under /:lang prefix
+// Uses re-export files in routes/{lang}/ to avoid route ID conflicts
+const langGroups = i18nConfig.languages
+  .filter((l) => l !== i18nConfig.defaultLanguage)
+  .map((lang) =>
+    route(lang, `routes/${lang}/lang-layout.tsx`, [
+      index(`routes/${lang}/_index.tsx`),
+      ...pages.map(([key, file]) => {
+        const langFile = file.replace("routes/", `routes/${lang}/`);
+        return route(getTranslation(lang, `slug.${key}`), langFile);
+      }),
+    ])
+  );
 
 const routes: RouteConfig = [
-  // All pages wrapped in the :lang? layout for i18n
-  route(":lang?", "routes/lang-layout.tsx", [
-    index("routes/_index.tsx"),
-    route("about", "routes/about.tsx"),
-    route("services", "routes/services.tsx"),
-    // ... add more pages as children here
-  ]),
+  // Default language pages (top-level, no layout wrapper)
+  index("routes/_index.tsx"),
+  ...defaultRoutes,
+
+  // Non-default language groups
+  ...langGroups,
 ];
 
 // DEV ONLY: Catch-all route for 404s
@@ -329,11 +455,16 @@ if (process.env.NODE_ENV !== "production") {
 export default routes;
 ```
 
-This single structure handles all languages. Adding a new page just means adding one `route()` entry inside the children array.
+When adding a new page:
+1. Create the route file in `app/routes/` (e.g., `routes/contact.tsx`)
+2. Add an entry to the `pages` array in `routes.ts`
+3. Create a re-export file in `app/routes/{lang}/` for each non-default language
+4. Add `slug.{key}` to every locale JSON file
+5. Add content translation keys to every locale JSON file
 
-## Step 11: Edit `react-router.config.ts`
+## Step 12: Edit `react-router.config.ts`
 
-The `:lang?` routes are parameterized, so `getStaticPaths()` alone won't enumerate language variants. Update the prerender config to expand paths for each language:
+Enumerate all language/slug combos from locale files for prerender:
 
 ```ts
 import type { Config } from "@react-router/dev/config";
@@ -341,26 +472,33 @@ import type { Config } from "@react-router/dev/config";
 export default {
   ssr: process.env.NODE_ENV === "production",
 
-  async prerender({ getStaticPaths }) {
-    const staticPaths = getStaticPaths();
-
+  async prerender() {
     try {
       const { i18nConfig } = await import("./app/i18n/config.ts");
-      const extraLangs = i18nConfig.languages.filter(
-        (l) => l !== i18nConfig.defaultLanguage
-      );
+      const { getTranslation } = await import("./app/i18n/utils.ts");
 
-      if (extraLangs.length === 0) return staticPaths;
+      // Page keys must match the pages array in routes.ts
+      const pageKeys = ["about", "services", "pricing"];
 
-      // For each base path, also generate /:lang versions
-      const langPaths = staticPaths.flatMap((p) =>
-        extraLangs.map((l) => `/${l}${p === "/" ? "" : p}`)
-      );
+      const paths = ["/"];
 
-      return [...staticPaths, ...langPaths];
+      // Default language pages (original slugs)
+      for (const key of pageKeys) {
+        paths.push(`/${getTranslation(i18nConfig.defaultLanguage, `slug.${key}`)}`);
+      }
+
+      // Non-default language pages (translated slugs)
+      for (const lang of i18nConfig.languages) {
+        if (lang === i18nConfig.defaultLanguage) continue;
+        paths.push(`/${lang}`); // homepage
+        for (const key of pageKeys) {
+          paths.push(`/${lang}/${getTranslation(lang, `slug.${key}`)}`);
+        }
+      }
+
+      return paths;
     } catch {
-      // No i18n config — return paths as-is
-      return staticPaths;
+      return ["/"];
     }
   },
 
@@ -368,30 +506,9 @@ export default {
 } satisfies Config;
 ```
 
-If `getStaticPaths()` does not return the child routes (because they're under `:lang?`), list the base paths explicitly instead:
+When adding a new page, add its key to both the `pages` array in `routes.ts` AND the `pageKeys` array here.
 
-```ts
-async prerender() {
-  const basePaths = ["/", "/about", "/services"]; // keep in sync with routes.ts
-
-  try {
-    const { i18nConfig } = await import("./app/i18n/config.ts");
-    const extraLangs = i18nConfig.languages.filter(
-      (l) => l !== i18nConfig.defaultLanguage
-    );
-    const langPaths = basePaths.flatMap((p) =>
-      extraLangs.map((l) => `/${l}${p === "/" ? "" : p}`)
-    );
-    return [...basePaths, ...langPaths];
-  } catch {
-    return basePaths;
-  }
-}
-```
-
-When adding a new page, add its path to both `routes.ts` (as a child route) AND the `basePaths` array here.
-
-## Step 12: Convert existing pages to use translations
+## Step 13: Convert existing pages to use translations
 
 For EVERY existing route component, you need to:
 
@@ -400,6 +517,7 @@ For EVERY existing route component, you need to:
 3. **Replace strings with `t()` calls** — swap each hardcoded string for `t("key")`
 4. **Update `meta()`** — replace hardcoded title/description with `getTranslation()`
 5. **Add `<HreflangTags />`** — include inside the component JSX
+6. **Use `useLocalizedPath()`** — for ALL internal links
 
 ### Example: Converting a page
 
@@ -417,9 +535,7 @@ export default function About() {
     <section className="container mx-auto py-16">
       <h1 className="text-4xl font-bold">About Our Company</h1>
       <p className="mt-4">We are a team of experts dedicated to helping you grow.</p>
-      <button className="mt-8 bg-blue-600 text-white px-6 py-3 rounded">
-        Contact Us
-      </button>
+      <Link to="/contact">Contact Us</Link>
     </section>
   );
 }
@@ -428,8 +544,10 @@ export default function About() {
 AFTER (translated):
 ```tsx
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { getLangFromPath, getTranslation } from "~/i18n/utils";
 import { HreflangTags } from "~/components/HreflangTags";
+import { useLocalizedPath } from "~/hooks/useLocalizedPath";
 import type { Route } from "./+types/about";
 
 export function meta({ location }: Route.MetaArgs) {
@@ -447,9 +565,7 @@ export default function About() {
       <HreflangTags />
       <h1 className="text-4xl font-bold">{t("about.heading")}</h1>
       <p className="mt-4">{t("about.description")}</p>
-      <button className="mt-8 bg-blue-600 text-white px-6 py-3 rounded">
-        {t("about.cta")}
-      </button>
+      <Link to={useLocalizedPath("/contact")}>{t("about.cta")}</Link>
     </section>
   );
 }
@@ -460,6 +576,7 @@ And add to BOTH locale files:
 `app/i18n/locales/en.json`:
 ```json
 {
+  "slug.about": "about",
   "about.meta.title": "About Us",
   "about.meta.description": "Learn about our company",
   "about.heading": "About Our Company",
@@ -471,6 +588,7 @@ And add to BOTH locale files:
 `app/i18n/locales/es.json`:
 ```json
 {
+  "slug.about": "sobre-nosotros",
   "about.meta.title": "Sobre Nosotros",
   "about.meta.description": "Conozca nuestra empresa",
   "about.heading": "Sobre Nuestra Empresa",
@@ -487,3 +605,4 @@ And add to BOTH locale files:
 - Key naming: use `{page}.{section}.{element}` dot notation (e.g., `home.hero.title`, `about.cta`)
 - Do this for ALL pages, including shared components like Header and Footer
 - Add `<HreflangTags />` to every page component (not shared components)
+- Always use `useLocalizedPath()` for internal links — pass the default-language slug, not the translated one
