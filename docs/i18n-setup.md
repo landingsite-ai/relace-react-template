@@ -224,7 +224,9 @@ Example for Spanish (`app/routes/es/`):
 
 `app/routes/es/lang-layout.tsx`:
 ```tsx
-export { default, loader } from "../lang-layout";
+// Do NOT re-export `loader` — loaders are not allowed with ssr:false in dev mode.
+// The loader only runs during production SSG builds, where the main lang-layout.tsx is used.
+export { default } from "../lang-layout";
 ```
 
 `app/routes/es/_index.tsx`:
@@ -302,7 +304,7 @@ Add `<HreflangTags />` inside each route component so crawlers discover language
 Navigates between languages using translated slugs:
 
 ```tsx
-import { Link, useLocation } from "react-router";
+import { useLocation } from "react-router";
 import { i18nConfig } from "~/i18n/config";
 import { getTranslation, reverseSlug, getLangFromPath } from "~/i18n/utils";
 
@@ -320,23 +322,25 @@ export function LanguageSwitcher() {
   return (
     <div className="flex gap-2">
       {i18nConfig.languages.map((lang) => {
-        let to: string;
+        let href: string;
         if (!pageKey) {
-          to = lang === i18nConfig.defaultLanguage ? "/" : `/${lang}`;
+          href = lang === i18nConfig.defaultLanguage ? "/" : `/${lang}`;
         } else {
           const slug = getTranslation(lang, `slug.${pageKey}`);
-          to = lang === i18nConfig.defaultLanguage ? `/${slug}` : `/${lang}/${slug}`;
+          href = lang === i18nConfig.defaultLanguage ? `/${slug}` : `/${lang}/${slug}`;
         }
         return (
-          <Link key={lang} to={to} className={currentLang === lang ? "font-bold" : ""}>
+          <a key={lang} href={href} className={currentLang === lang ? "font-bold" : ""}>
             {i18nConfig.languageNames[lang]}
-          </Link>
+          </a>
         );
       })}
     </div>
   );
 }
 ```
+
+IMPORTANT: The LanguageSwitcher uses `<a>` tags, NOT `<Link>`. Switching languages requires a full page reload so that `getInitialLang()` re-initializes i18next with the correct language. Client-side navigation with `<Link>` would leave the i18n state stale.
 
 Place the LanguageSwitcher in the Header component.
 
@@ -345,19 +349,27 @@ Place the LanguageSwitcher in the Header component.
 Internal links must use translated slugs when on a non-default language page:
 
 ```ts
-import { useParams } from "react-router";
-import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router";
+import { i18nConfig } from "~/i18n/config";
+import { getTranslation, getLangFromPath } from "~/i18n/utils";
 
 export function useLocalizedPath(path: string): string {
-  const { lang } = useParams();
-  const { t } = useTranslation();
-  if (!lang) return path;
+  const { pathname } = useLocation();
+  const lang = getLangFromPath(pathname);
 
+  // Default language: return path unchanged (no prefix)
+  if (lang === i18nConfig.defaultLanguage) return path;
+
+  // Non-default language: translate each slug segment and add prefix
   const segments = path.split("/").filter(Boolean);
-  const translated = segments.map((seg) => t(`slug.${seg}`, seg));
-  return `/${lang}/${translated.join("/")}`;
+  const translated = segments.map((seg) => getTranslation(lang, `slug.${seg}`) || seg);
+  return translated.length > 0
+    ? `/${lang}/${translated.join("/")}`
+    : `/${lang}`;
 }
 ```
+
+IMPORTANT: This hook uses `useLocation()`, NOT `useParams()`. Header and Footer render in root.tsx outside any route group, so `useParams()` would not have the `:lang` param. `useLocation()` always has the correct pathname.
 
 Use it on EVERY internal `<Link>` in Header, Footer, CTAs, and page content:
 
@@ -375,6 +387,16 @@ import { useLocalizedPath } from "~/hooks/useLocalizedPath";
 IMPORTANT: The path passed to `useLocalizedPath` should always use the default-language slug (e.g., `"/about"`, not `"/sobre-nosotros"`). The hook translates it to the current language's slug.
 
 IMPORTANT: The logo/site-name link in the Header is often hardcoded to `"/"`. It MUST also use `useLocalizedPath("/")` so it points to `/es` on Spanish pages instead of `/`. Same for any other hardcoded `"/"` links.
+
+Checklist — ALL of these must use `useLocalizedPath()`:
+- Logo link in Header (usually hardcoded to "/")
+- Every nav link in Header ("/about", "/services", etc.)
+- Every link in Footer
+- Every CTA button/link in page content ("Contact Us" → "/contact", etc.)
+- Every inline link in page text
+- Any "Back to home" or "Learn more" links
+
+If ANY internal link does not use `useLocalizedPath()`, it will drop the user back to the default language when clicked on a translated page.
 
 ## Step 10: Edit `app/root.tsx`
 
@@ -411,12 +433,12 @@ import { getTranslation } from "./i18n/utils";
 
 // Page registry: [slug key, route file]
 // The slug key matches the "slug.{key}" entry in locale files.
-// Add new pages here — slugs are looked up from locale files automatically.
+// IMPORTANT: Only list pages that ALREADY EXIST as files in app/routes/.
+// Do NOT add entries for pages that haven't been created yet — React Router
+// will crash trying to load them.
 const pages: [string, string][] = [
-  ["about", "routes/about.tsx"],
-  ["services", "routes/services.tsx"],
-  ["pricing", "routes/pricing.tsx"],
-  // ... add ALL pages on the site
+  // Add entries here AFTER creating the route file AND its re-export in routes/{lang}/
+  // Example: ["about", "routes/about.tsx"],
 ];
 
 // Default language: top-level, original slugs, no prefix
@@ -455,12 +477,12 @@ if (process.env.NODE_ENV !== "production") {
 export default routes;
 ```
 
-When adding a new page:
+When adding a new page (order matters — do NOT add to pages array before files exist):
 1. Create the route file in `app/routes/` (e.g., `routes/contact.tsx`)
-2. Add an entry to the `pages` array in `routes.ts`
-3. Create a re-export file in `app/routes/{lang}/` for each non-default language
-4. Add `slug.{key}` to every locale JSON file
-5. Add content translation keys to every locale JSON file
+2. Create a re-export file in `app/routes/{lang}/` for each non-default language
+3. Add `slug.{key}` to every locale JSON file
+4. Add content translation keys to every locale JSON file
+5. LAST: Add an entry to the `pages` array in `routes.ts` — only after the files above exist
 
 ## Step 12: Edit `react-router.config.ts`
 
@@ -470,6 +492,10 @@ Enumerate all language/slug combos from locale files for prerender:
 import type { Config } from "@react-router/dev/config";
 
 export default {
+  // SSR is only enabled for production builds (SSG prerendering).
+  // In dev mode (ssr: false), loaders don't run — language detection is handled
+  // client-side by getInitialLang() in i18n/index.ts instead.
+  // Do NOT set ssr: true — it causes a flash of default language during SSR.
   ssr: process.env.NODE_ENV === "production",
 
   async prerender() {
