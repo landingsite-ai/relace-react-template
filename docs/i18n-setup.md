@@ -337,8 +337,41 @@ async prerender() {
 
 When adding a new page, add its path to both `routes.ts` (as a child route) AND the `basePaths` array here.
 
-## Step 11: Edit route components to use translations
+## Step 11: Convert existing pages to use translations
 
+For EVERY existing route component, you need to:
+
+1. **Extract all hardcoded strings** — find every user-visible text string in the JSX (headings, paragraphs, button labels, alt text, placeholders, etc.)
+2. **Create translation keys** — add each string to the locale JSON files with a descriptive dot-notation key
+3. **Replace strings with `t()` calls** — swap each hardcoded string for `t("key")`
+4. **Update `meta()`** — replace hardcoded title/description with `getTranslation()`
+5. **Add `<HreflangTags />`** — include inside the component JSX
+
+### Example: Converting a page
+
+BEFORE (hardcoded English):
+```tsx
+export function meta() {
+  return [
+    { title: "About Us" },
+    { name: "description", content: "Learn about our company" },
+  ];
+}
+
+export default function About() {
+  return (
+    <section className="container mx-auto py-16">
+      <h1 className="text-4xl font-bold">About Our Company</h1>
+      <p className="mt-4">We are a team of experts dedicated to helping you grow.</p>
+      <button className="mt-8 bg-blue-600 text-white px-6 py-3 rounded">
+        Contact Us
+      </button>
+    </section>
+  );
+}
+```
+
+AFTER (translated):
 ```tsx
 import { useTranslation } from "react-i18next";
 import { getLangFromPath, getTranslation } from "~/i18n/utils";
@@ -356,13 +389,47 @@ export function meta({ location }: Route.MetaArgs) {
 export default function About() {
   const { t } = useTranslation();
   return (
-    <>
+    <section className="container mx-auto py-16">
       <HreflangTags />
-      <h1>{t("about.title")}</h1>
-      <p>{t("about.description")}</p>
-    </>
+      <h1 className="text-4xl font-bold">{t("about.heading")}</h1>
+      <p className="mt-4">{t("about.description")}</p>
+      <button className="mt-8 bg-blue-600 text-white px-6 py-3 rounded">
+        {t("about.cta")}
+      </button>
+    </section>
   );
 }
 ```
 
-Use `t()` from `useTranslation()` for all user-visible text in React components. Use `getTranslation()` from utils for `meta()` and other non-React contexts.
+And add to BOTH locale files:
+
+`app/i18n/locales/en.json`:
+```json
+{
+  "about.meta.title": "About Us",
+  "about.meta.description": "Learn about our company",
+  "about.heading": "About Our Company",
+  "about.description": "We are a team of experts dedicated to helping you grow.",
+  "about.cta": "Contact Us"
+}
+```
+
+`app/i18n/locales/es.json`:
+```json
+{
+  "about.meta.title": "Sobre Nosotros",
+  "about.meta.description": "Conozca nuestra empresa",
+  "about.heading": "Sobre Nuestra Empresa",
+  "about.description": "Somos un equipo de expertos dedicados a ayudarte a crecer.",
+  "about.cta": "Contáctenos"
+}
+```
+
+### Key rules
+
+- **Every** user-visible string must be extracted — don't leave any hardcoded text
+- Use `t()` from `useTranslation()` inside React components
+- Use `getTranslation(lang, key)` from `~/i18n/utils` in `meta()` and other non-React contexts (where hooks aren't available)
+- Key naming: use `{page}.{section}.{element}` dot notation (e.g., `home.hero.title`, `about.cta`)
+- Do this for ALL pages, including shared components like Header and Footer
+- Add `<HreflangTags />` to every page component (not shared components)
