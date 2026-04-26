@@ -5,11 +5,45 @@ import {
   Scripts,
   ScrollRestoration,
   isRouteErrorResponse,
+  useLocation,
+  useNavigation,
 } from "react-router";
+import { useEffect } from "react";
 import type { Route } from "./+types/root";
 import "./styles/globals.css";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+
+// Reports client-side navigation state to the parent iframe chrome so the
+// preview panel can drive a loading spinner and URL bar. No-op when not
+// running inside an iframe (standalone publish, tests).
+function NavigationBridge() {
+  const navigation = useNavigation();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (typeof window === "undefined" || window.parent === window) return;
+
+    const target = navigation.location;
+    const path =
+      navigation.state !== "idle" && target
+        ? `${target.pathname}${target.search}${target.hash}`
+        : `${location.pathname}${location.search}${location.hash}`;
+
+    window.parent.postMessage(
+      { type: "navigation", path, state: navigation.state },
+      "*",
+    );
+  }, [
+    navigation.state,
+    navigation.location,
+    location.pathname,
+    location.search,
+    location.hash,
+  ]);
+
+  return null;
+}
 
 /**
  * Root Layout
@@ -53,6 +87,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <div className="flex min-h-screen flex-col">
+      <NavigationBridge />
       <Header />
       <main className="flex-1">
         <Outlet />
