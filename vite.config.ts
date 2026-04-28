@@ -98,8 +98,6 @@ export default defineConfig({
       "lucide-react",
       "embla-carousel-react",
       "zod",
-      "i18next",
-      "react-i18next",
     ],
   },
   build: {
