@@ -98,6 +98,8 @@ export default defineConfig({
       "lucide-react",
       "embla-carousel-react",
       "zod",
+      "@aifeatures/react",
+      "@marsidev/react-turnstile",
     ],
   },
   build: {
