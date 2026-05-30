@@ -20,8 +20,6 @@
     ],
     "jsx": "react-jsx",
     "module": "ESNext",
-    "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
     "moduleResolution": "bundler",
     "rootDirs": [
       ".",
