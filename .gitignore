@@ -39,3 +39,6 @@ yarn-error.log*
 # Vite
 vite.config.ts.timestamp-*
 
+
+# Incremental typecheck cache
+.tsbuildinfo

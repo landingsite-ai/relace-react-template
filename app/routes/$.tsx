@@ -12,9 +12,8 @@
  */
 
 import PageNotGenerated from "~/components/PageNotGenerated";
-import type { Route } from "./+types/$";
 
-export function meta({}: Route.MetaArgs) {
+export function meta() {
   return [{ title: "Page Not Found" }];
 }
 
