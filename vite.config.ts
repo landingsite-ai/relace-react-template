@@ -1,6 +1,7 @@
 import { reactRouter } from "@react-router/dev/vite";
 import { defineConfig, type PluginOption } from "vite";
 import tailwindcss from "@tailwindcss/vite";
+import tsconfigPaths from "vite-tsconfig-paths";
 
 /**
  * Force a full page reload when route structure changes (new routes added).
@@ -52,11 +53,9 @@ export default defineConfig({
     // Tailwind v4 Vite plugin (uses Oxide engine + Lightning CSS)
     tailwindcss(),
     reactRouter(),
+    tsconfigPaths(),
     reloadOnRouteChanges(),
   ],
-  resolve: {
-    tsconfigPaths: true,
-  },
   server: {
     host: "0.0.0.0",
     port: 5173,
@@ -99,6 +98,8 @@ export default defineConfig({
       "lucide-react",
       "embla-carousel-react",
       "zod",
+      "@aifeatures/react",
+      "@marsidev/react-turnstile",
     ],
   },
   build: {
