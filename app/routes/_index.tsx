@@ -1,5 +1,3 @@
-import type { Route } from "./+types/_index";
-
 /**
  * Homepage
  *
@@ -7,7 +5,7 @@ import type { Route } from "./+types/_index";
  * The AI will populate this with the user's content.
  */
 
-export function meta({}: Route.MetaArgs) {
+export function meta() {
   return [
     { title: "Welcome" },
     { name: "description", content: "Welcome to our website" },
