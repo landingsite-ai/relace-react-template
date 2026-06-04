@@ -2,6 +2,7 @@ import { reactRouter } from "@react-router/dev/vite";
 import { defineConfig, type PluginOption } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
+import { sourceLocPlugin } from "./vite-plugin-source-loc";
 
 /**
  * Force a full page reload when route structure changes (new routes added).
@@ -52,6 +53,10 @@ export default defineConfig({
   plugins: [
     // Tailwind v4 Vite plugin (uses Oxide engine + Lightning CSS)
     tailwindcss(),
+    // Dev-only: stamp data-source-loc onto host JSX elements so the preview can
+    // map a rendered DOM node back to its source location. enforce:'pre' runs
+    // before react-router's JSX transform; apply:'serve' keeps it out of builds.
+    sourceLocPlugin(),
     reactRouter(),
     tsconfigPaths(),
     reloadOnRouteChanges(),
