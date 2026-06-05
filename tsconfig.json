@@ -37,6 +37,7 @@
     "skipLibCheck": true,
     "incremental": true,
     "tsBuildInfoFile": "./.tsbuildinfo",
-    "strict": true
+    "strict": true,
+    "noUnusedLocals": true
   }
 }
