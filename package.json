@@ -5,13 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "react-router dev",
-    "dev:container": "concurrently \"react-router dev\" \"tsx scripts/command-server.ts\"",
     "build": "react-router build",
     "preview": "vite preview",
     "start": "react-router-serve ./build/server/index.js",
     "lint": "eslint app/",
-    "typecheck": "react-router typegen && tsc --noEmit",
-    "command-server": "tsx scripts/command-server.ts"
+    "typecheck": "react-router typegen && tsc --noEmit"
   },
   "dependencies": {
     "react": "19.2.6",
