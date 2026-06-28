@@ -8,7 +8,7 @@ import {
   useLocation,
   useNavigation,
 } from "react-router";
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import type { Route } from "./+types/root";
 import "./styles/globals.css";
 import Header from "./components/Header";
@@ -66,7 +66,7 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
-export function Layout({ children }: { children: React.ReactNode }) {
+export function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
