@@ -3,14 +3,14 @@
  *
  * Registered last in app/routes.ts for every build. Three behaviours, in order:
  *
- * 1. The site has a custom not-found page (app/routes/404.tsx, registered as
- *    route("404", "routes/404.tsx") so it prerenders to 404/index.html): render
- *    it. The hosting platform serves that prerendered file with a real 404
- *    status for every unknown URL; this route is what the client-side router
- *    matches once the page hydrates in the browser, so the same component has
- *    to render here or React swaps the page for root.tsx's generic error
- *    boundary. Picked up automatically via import.meta.glob — the glob is an
- *    empty object when the file doesn't exist, so nothing else needs wiring.
+ * 1. The site has a custom not-found page (app/routes/404.tsx — its mere
+ *    existence makes routes.ts register /404 so it prerenders to
+ *    404/index.html): render it. The hosting platform serves that prerendered
+ *    file with a real 404 status for every unknown URL; this route is what the
+ *    client-side router matches once the page hydrates in the browser, so the
+ *    same component has to render here or React swaps the page for root.tsx's
+ *    generic error boundary. Picked up via import.meta.glob — an empty object
+ *    when the file doesn't exist, so nothing needs wiring by hand.
  * 2. Development, no custom page: the PageNotGenerated screen for pages that
  *    don't exist yet. This is a proper route (not an error boundary), so Vite
  *    processes and includes its CSS, avoiding FOUC.

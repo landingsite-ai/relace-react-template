@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { type RouteConfig, index, route } from "@react-router/dev/routes";
 
 /**
@@ -28,6 +29,20 @@ const routes: RouteConfig = [
   // route("contact", "routes/contact.tsx"),
 ];
 
+// Custom not-found page: opt-in by file. If app/routes/404.tsx exists it is
+// registered here automatically, prerendered to 404/index.html, and the hosting
+// platform serves it with a real 404 status for every URL that doesn't exist.
+// Nothing else to wire — the catch-all below renders it after hydration.
+// (Skipped if it was already registered above; a second entry for the same
+// file would be a duplicate route id.)
+const CUSTOM_404_FILE = "routes/404.tsx";
+if (
+  !routes.some((r) => r.file === CUSTOM_404_FILE) &&
+  existsSync(new URL(`./${CUSTOM_404_FILE}`, import.meta.url))
+) {
+  routes.push(route("404", CUSTOM_404_FILE));
+}
+
 // Catch-all route for unknown URLs. Registered in EVERY build, on purpose:
 // - Dev: renders the "page not generated yet" screen (and gives Vite a real
 //   route so its CSS is processed, avoiding FOUC).
@@ -35,8 +50,6 @@ const routes: RouteConfig = [
 //   status, but the router still needs a matching route once the page
 //   hydrates in the browser — without one it throws a 404 route error and
 //   swaps whatever was served for root.tsx's generic error boundary.
-// A custom not-found page is this same line pointed at routes/404.tsx (with an
-// explicit id) plus a static route("404", "routes/404.tsx") entry above.
 // Note: The AI should NOT add routes after this comment - the catch-all must be last!
 routes.push(route("*", "routes/$.tsx"));
 
