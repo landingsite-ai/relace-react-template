@@ -32,6 +32,7 @@ type RouteModule = {
   // Called with this route's meta args (see `meta` below); react-router's
   // generic `MetaArgs` is narrower than the generated `Route.MetaArgs`.
   meta?: (args: Route.MetaArgs) => MetaDescriptor[];
+  links?: Route.LinksFunction;
 };
 
 // `{}` when app/routes/404.tsx does not exist; Vite resolves this at build time.
@@ -43,6 +44,10 @@ const Custom404 = custom404["./404.tsx"];
 export function meta(args: Route.MetaArgs) {
   return Custom404?.meta?.(args) ?? [{ title: "Page Not Found" }];
 }
+
+// Forward the custom page's link descriptors so a page-specific stylesheet or
+// preload survives hydration and client-side navigation to a missing URL.
+export const links: Route.LinksFunction = () => Custom404?.links?.() ?? [];
 
 export default function CatchAllRoute() {
   if (Custom404) {
