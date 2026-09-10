@@ -28,12 +28,16 @@ const routes: RouteConfig = [
   // route("contact", "routes/contact.tsx"),
 ];
 
-// DEV ONLY: Catch-all route for 404s
-// This ensures Vite processes CSS for the "page not generated" screen, avoiding FOUC.
-// Excluded from production builds - the hosting provider handles real 404s.
+// Catch-all route for unknown URLs. Registered in EVERY build, on purpose:
+// - Dev: renders the "page not generated yet" screen (and gives Vite a real
+//   route so its CSS is processed, avoiding FOUC).
+// - Production: the hosting platform answers unknown URLs with a real 404
+//   status, but the router still needs a matching route once the page
+//   hydrates in the browser — without one it throws a 404 route error and
+//   swaps whatever was served for root.tsx's generic error boundary.
+// A custom not-found page is this same line pointed at routes/404.tsx (with an
+// explicit id) plus a static route("404", "routes/404.tsx") entry above.
 // Note: The AI should NOT add routes after this comment - the catch-all must be last!
-if (process.env.NODE_ENV !== "production") {
-  routes.push(route("*", "routes/$.tsx"));
-}
+routes.push(route("*", "routes/$.tsx"));
 
 export default routes;

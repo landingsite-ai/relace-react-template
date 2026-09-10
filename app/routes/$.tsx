@@ -1,14 +1,22 @@
 /**
- * Catch-All Route (DEV ONLY)
+ * Catch-All Route
  *
- * This route catches all unmatched paths and shows the PageNotGenerated
- * component in development mode. This is a proper route (not an error boundary),
- * so Vite will process and include its CSS, avoiding FOUC.
+ * Registered last in app/routes.ts for every build. In development it shows
+ * the PageNotGenerated screen for pages that don't exist yet. This is a proper
+ * route (not an error boundary), so Vite will process and include its CSS,
+ * avoiding FOUC.
+ *
+ * In production the hosting platform already answers unknown URLs with a real
+ * 404 status; this route only exists so the client-side router has a match
+ * after hydration (and for in-app navigation to a missing page) instead of
+ * falling through to root.tsx's generic error boundary.
  *
  * Note: This component is rendered inside the App layout (root.tsx),
  * which already provides Header and Footer. Don't add them here!
  *
- * In production, this route would show a proper 404 page.
+ * A site's custom not-found page does NOT live here: it is app/routes/404.tsx
+ * with a static route("404", ...) entry, and the catch-all line in routes.ts
+ * re-pointed at that file.
  */
 
 import PageNotGenerated from "~/components/PageNotGenerated";
