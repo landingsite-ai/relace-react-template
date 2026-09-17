@@ -100,6 +100,13 @@ export default defineConfig({
       "zod",
       "@aifeatures/react",
       "@marsidev/react-turnstile",
+      // Brand/social icons (the prompt sends the agent here, not lucide). The
+      // package is a dependency but the template source never imports it, so
+      // without this entry the FIRST `react-icons/fa6` import mid-build makes
+      // Vite re-optimize: SSR returns 500 ("new version of the pre-bundle")
+      // and the loaded page ends up with two React copies ("Invalid hook
+      // call"). Only fa6 — it is the only pack the agent is told to use.
+      "react-icons/fa6",
     ],
   },
   build: {
