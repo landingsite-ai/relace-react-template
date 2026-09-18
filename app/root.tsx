@@ -13,6 +13,8 @@ import type { Route } from "./+types/root";
 import "./styles/globals.css";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import { AifeaturesProvider } from "@aifeatures/react";
+import aifeaturesConfig from "../aifeatures.config.json";
 
 // Reports client-side navigation state to the parent iframe chrome so the
 // preview panel can drive a loading spinner and URL bar. No-op when not
@@ -86,14 +88,16 @@ export function Layout({ children }: { children: ReactNode }) {
 
 export default function App() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <NavigationBridge />
-      <Header />
-      <main className="flex-1">
-        <Outlet />
-      </main>
-      <Footer />
-    </div>
+    <AifeaturesProvider apiUrl={aifeaturesConfig.apiUrl}>
+      <div className="flex min-h-screen flex-col">
+        <NavigationBridge />
+        <Header />
+        <main className="flex-1">
+          <Outlet />
+        </main>
+        <Footer />
+      </div>
+    </AifeaturesProvider>
   );
 }
 
