@@ -1,23 +1,59 @@
 /**
- * Catch-All Route (DEV ONLY)
+ * Catch-All Route
  *
- * This route catches all unmatched paths and shows the PageNotGenerated
- * component in development mode. This is a proper route (not an error boundary),
- * so Vite will process and include its CSS, avoiding FOUC.
+ * Registered last in app/routes.ts for every build. Three behaviours, in order:
+ *
+ * 1. The site has a custom not-found page (app/routes/404.tsx — its mere
+ *    existence makes routes.ts register /404 so it prerenders to
+ *    404/index.html): render it. The hosting platform serves that prerendered
+ *    file with a real 404 status for every unknown URL; this route is what the
+ *    client-side router matches once the page hydrates in the browser, so the
+ *    same component has to render here or React swaps the page for root.tsx's
+ *    generic error boundary. Picked up via import.meta.glob — an empty object
+ *    when the file doesn't exist, so nothing needs wiring by hand.
+ * 2. Development, no custom page: the PageNotGenerated screen for pages that
+ *    don't exist yet. This is a proper route (not an error boundary), so Vite
+ *    processes and includes its CSS, avoiding FOUC.
+ * 3. Production, no custom page: a plain 404 block. Direct hits never reach it
+ *    (the platform answers those itself); it only covers in-app navigation to
+ *    a missing page.
  *
  * Note: This component is rendered inside the App layout (root.tsx),
  * which already provides Header and Footer. Don't add them here!
- *
- * In production, this route would show a proper 404 page.
  */
 
+import type { ComponentType } from "react";
+import type { MetaDescriptor } from "react-router";
 import PageNotGenerated from "~/components/PageNotGenerated";
+import type { Route } from "./+types/$";
 
-export function meta() {
-  return [{ title: "Page Not Found" }];
+type RouteModule = {
+  default: ComponentType;
+  // Called with this route's meta args (see `meta` below); react-router's
+  // generic `MetaArgs` is narrower than the generated `Route.MetaArgs`.
+  meta?: (args: Route.MetaArgs) => MetaDescriptor[];
+  links?: Route.LinksFunction;
+};
+
+// `{}` when app/routes/404.tsx does not exist; Vite resolves this at build time.
+const custom404 = import.meta.glob<RouteModule>("./404.tsx", { eager: true });
+const Custom404 = custom404["./404.tsx"];
+
+// Forward this route's meta args so a 404.tsx meta that reads location,
+// params, data or matches gets real values instead of undefined.
+export function meta(args: Route.MetaArgs) {
+  return Custom404?.meta?.(args) ?? [{ title: "Page Not Found" }];
 }
 
+// Forward the custom page's link descriptors so a page-specific stylesheet or
+// preload survives hydration and client-side navigation to a missing URL.
+export const links: Route.LinksFunction = () => Custom404?.links?.() ?? [];
+
 export default function CatchAllRoute() {
+  if (Custom404) {
+    return <Custom404.default />;
+  }
+
   // Get the current pathname
   const pathname =
     typeof window !== "undefined" ? window.location.pathname : undefined;
